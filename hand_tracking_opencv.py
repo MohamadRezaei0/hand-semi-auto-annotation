@@ -29,7 +29,8 @@ def find_hand(RGBimg, results, margin=20):
 
 class CamDataset:
     def __init__(
-        self, dataset_path, image_dsize, image_format='jpg'):
+        self, dataset_path, image_dsize, class_name, image_format='jpg'):
+        self.class_name = class_name
         self.image_dsize = image_dsize
         self.image_format = image_format
         self.dataset_path = dataset_path
@@ -46,18 +47,43 @@ class CamDataset:
         print("enter 'q' to quit\nenter 's' to save data")
         while True:
             _, img = cam.read()
+            img = cv2.resize(img, self.image_dsize)
             RGBimg = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             results = hands.process(RGBimg)
-            hand = find_hand(RGBimg, results, margin=30)
+            hand = find_hand(RGBimg, results)
             if(hand):
                 x, y, w, h = hand
+                org_image = img.copy()
                 cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 if(cv2.waitKey(1) & 0xFF == ord("s")):
-                    image = cv2.resize(img, self.image_dsize)
-                    image_path = "{0}{1}{2}.{3}".format(self.dataset_path, sep, img_counter,self.image_format)
-                    cv2.imwrite(image_path, image)
+                    image_path = "{0}{1}{2}_{3}.{4}".format(
+                                                        self.dataset_path,
+                                                        sep,
+                                                        self.class_name,
+                                                        img_counter,
+                                                        self.image_format,)
+
+                    annotation_path = "{0}{1}{2}_{3}.{4}".format(
+                                                        self.dataset_path,
+                                                        sep,
+                                                        self.class_name,
+                                                        img_counter,
+                                                        "txt",)
+
+                    annotation_data = "{0} {1} {2} {3} {4}".format(
+                                                        self.class_name,
+                                                        (x + w)/2,
+                                                        (y + h)/2,
+                                                        w, h,)
+
+                    cv2.imwrite(image_path, org_image)
+                    annotation_file = open(annotation_path, "w")
+                    annotation_file.write(annotation_data)
+                    annotation_file.close()
+
+                    print("image: '{0}' annotation: '{1}'".format(image_path, annotation_path))
+
                     img_counter += 1
-                    print("image saved on '{}'".format(image_path))
 
             elif(cv2.waitKey(1) & 0xFF == ord("s")):
                 print("no objects")
@@ -66,13 +92,6 @@ class CamDataset:
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
 
-            # if cv2.waitKey(1) & 0xFF == ord("s"):
-            #     image = cv2.resize(img, self.image_dsize)
-            #     image_path = "{0}{1}{2}.{3}".format(self.dataset_path, sep, img_counter,self.image_format)
-            #     cv2.imwrite(image_path, image)
-            #     img_counter += 1
-            #     print("image saved on '{}'".format(image_path))
-
 if __name__ == "__main__":
-    cam = CamDataset("0", (300, 300))
+    cam = CamDataset("0", (300, 300), "0")
     cam.start_streaming()
